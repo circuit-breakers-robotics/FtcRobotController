@@ -129,3 +129,29 @@ Note: Some names start with "Team" and others start with "team".  This is intent
 5)  Add:    include ':Team0417' to the "/settings.gradle" file.
     
 6)  Open up Android Studios and clean out any old files by using the menu to "Build/Clean Project""
+
+# Steps for build & deploy using adb
+Building and deploying FTC TeamCode to a Robot Controller using Android Studio and ADB involves several steps:
+1. Setting up Android Studio and the FTC SDK:
+   Install Android Studio: Download and install Android Studio from the official website.
+   Download FTC SDK: Obtain the FTC SDK project from the FIRST Tech Challenge GitHub repository. You can either clone the repository using Git or download it as a ZIP file and extract it.
+   Import Project: Open Android Studio and import the downloaded FTC SDK project. Android Studio will perform a Gradle sync, which may take some time.
+   Configure Java JDK: Ensure that Android Studio is configured to use Java Development Kit (JDK) version 17. You may need to download and install JDK 17 separately and then specify its path in Android Studio's Gradle settings.
+2. Developing Your TeamCode:
+   Locate TeamCode Module: In the Android Studio project browser, navigate to the TeamCode module.
+   Create OpModes: Within the org.firstinspires.ftc.teamcode package inside the TeamCode module, create your Java classes for OpModes (e.g., LinearOpMode or TeleOp). This is where you will write your robot's control logic.
+3. Connecting to the Robot Controller:
+   Physical Connection (Initial Setup): Connect the Robot Controller (phone or Control Hub) to your computer via a USB cable.
+   Verify ADB Connection: Open a terminal or command prompt and navigate to the platform-tools directory within your Android SDK installation. Run adb devices to confirm that your Robot Controller is recognized.
+   Enable Wireless ADB (Optional but Recommended):
+   Run adb tcpip 5555 to enable ADB over TCP/IP on port 5555.
+   Disconnect the USB cable.
+   Connect your computer to the Robot Controller's Wi-Fi network (e.g., "TEAMNUMBER-RC").
+   Run adb connect <RobotController_IP_Address>:5555. You can find the Robot Controller's IP address in its settings.
+4. Building and Deploying:
+   Select Deployment Target: In Android Studio, ensure that your Robot Controller device is selected in the deployment target dropdown near the "Run" button.
+   Build and Install: Click the "Run" (play) button in Android Studio. This will build your TeamCode and install the updated Robot Controller app containing your code onto the connected Robot Controller.
+   Wireless Deployment: If you set up wireless ADB, the code will be deployed over Wi-Fi without needing a physical USB connection.
+5. Running Your OpMode:
+   Launch Robot Controller App: Ensure the FTC Robot Controller app is running on the Robot Controller device.
+   Select OpMode: On the Robot Controller app, select your desired OpMode from the list and press "Init" and then "Start" to execute your code. 
