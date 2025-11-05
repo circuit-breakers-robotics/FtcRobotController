@@ -105,15 +105,13 @@ public class RobotDriver extends LinearOpMode {
             // Send calculated power to wheels
             leftDriveFront.setPower(leftPower);
             leftDriveRear.setPower(leftPower);
-             rightDriveFront.setPower(rightPower);
-             rightDriveRear.setPower(rightPower);
+            rightDriveFront.setPower(rightPower);
+            rightDriveRear.setPower(rightPower);
 
 
             // Show the elapsed game time and wheel power.
             telemetry.addData("Status", "Run Time: " + runtime.toString());
-            telemetry.addData("Motors", "left (%.2f), right (%.2f)", leftPower, rightPower);
-//            telemetry.addData("Servos", "left (%.2f), right (%.2f)", shootPower, 0.0);
-
+            telemetry.addData("Motors", "left: %s, direction: %s, power: (%.2f); right: %s, direction: %s, power: (%.2f)", leftDriveFront.getDeviceName(), leftDriveFront.getDirection(), leftPower, rightDriveFront.getDeviceName(), rightDriveFront.getDirection(), rightPower);
 
             telemetry.update();
         }
