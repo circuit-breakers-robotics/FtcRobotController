@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.IMU;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -18,6 +19,9 @@ public class DecodeAutonomousPID extends LinearOpMode {
     private DcMotor rightDriveRear = null;
     private DcMotor intakeMotor = null;
     private DcMotor launchMotor = null;
+    private DcMotor turretMotor = null;
+    private Servo sortingServo = null;
+    private Servo flickerServo = null;
     private IMU imu = null;
     private ElapsedTime runtime = new ElapsedTime();
 
@@ -30,6 +34,11 @@ public class DecodeAutonomousPID extends LinearOpMode {
     static final double HEADING_THRESHOLD = 1.0;
     static final double P_TURN_GAIN = 0.02;
     static final double P_DRIVE_GAIN = 0.03;
+    
+    static final double SORTING_OPEN = 0.0;
+    static final double SORTING_CLOSED = 1.0;
+    static final double FLICKER_REST = 0.0;
+    static final double FLICKER_FLICK = 0.7;
 
     @Override
     public void runOpMode() {
@@ -39,6 +48,9 @@ public class DecodeAutonomousPID extends LinearOpMode {
         rightDriveRear = hardwareMap.get(DcMotor.class, "right_drive_rear");
         intakeMotor = hardwareMap.get(DcMotor.class, "intake_motor");
         launchMotor = hardwareMap.get(DcMotor.class, "launch_motor");
+        turretMotor = hardwareMap.get(DcMotor.class, "turret_motor");
+        sortingServo = hardwareMap.get(Servo.class, "sorting_servo");
+        flickerServo = hardwareMap.get(Servo.class, "flicker_servo");
 
         // make sure the pair has same direction
         leftDriveFront.setDirection(DcMotor.Direction.REVERSE);
@@ -62,6 +74,13 @@ public class DecodeAutonomousPID extends LinearOpMode {
         leftDriveRear.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightDriveFront.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
         rightDriveRear.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+
+        turretMotor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        turretMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        turretMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        
+        sortingServo.setPosition(SORTING_CLOSED);
+        flickerServo.setPosition(FLICKER_REST);
 
         telemetry.addData("Status", "Ready");
         telemetry.update();
@@ -160,5 +179,42 @@ public class DecodeAutonomousPID extends LinearOpMode {
         launchMotor.setPower(power);
         sleep((long)(duration * 1000));
         launchMotor.setPower(0);
+    }
+    
+    public void launchBall(int targetAngle) {
+        if (!opModeIsActive()) return;
+        rotateTurret(targetAngle);
+        sleep(500);
+        sortBall();
+        sleep(300);
+        flickBall();
+    }
+    
+    public void rotateTurret(int degrees) {
+        if (!opModeIsActive()) return;
+        int targetPosition = turretMotor.getCurrentPosition() + (degrees * 10);
+        turretMotor.setTargetPosition(targetPosition);
+        turretMotor.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        turretMotor.setPower(0.5);
+        
+        while (turretMotor.isBusy() && opModeIsActive()) {
+            sleep(10);
+        }
+        turretMotor.setPower(0);
+        turretMotor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+    }
+    
+    public void sortBall() {
+        if (!opModeIsActive()) return;
+        sortingServo.setPosition(SORTING_OPEN);
+        sleep(500);
+        sortingServo.setPosition(SORTING_CLOSED);
+    }
+    
+    public void flickBall() {
+        if (!opModeIsActive()) return;
+        flickerServo.setPosition(FLICKER_FLICK);
+        sleep(200);
+        flickerServo.setPosition(FLICKER_REST);
     }
 }
