@@ -71,7 +71,7 @@ public class ConceptAprilTag extends LinearOpMode {
         final double SPEED_GAIN =   0.02 ;   //  Speed Control "Gain". e.g. Ramp up to 50% power at a 25 inch error.   (0.50 / 25.0)
         final double TURN_GAIN  =   0.01 ;   //  Turn Control "Gain".  e.g. Ramp up to 25% power at a 25 degree error. (0.25 / 25.0)
 
-        final double MAX_AUTO_SPEED = 1.0;   //  Clip the approach speed to this max value (adjust for your robot)
+        final double MAX_AUTO_SPEED = 1.0;     //  Clip the approach speed to this max value (adjust for your robot)
         final double MAX_AUTO_TURN  = 0.25;  //  Clip the turn speed to this max value (adjust for your robot)
         private DcMotor leftDrive;  //  Used to control the left drive wheel
         private DcMotor rightDrive;  //  Used to control the right drive wheel
@@ -258,3 +258,8 @@ public class ConceptAprilTag extends LinearOpMode {
             }
         }*/
     }
+ }
+}
+}
+}
+}
