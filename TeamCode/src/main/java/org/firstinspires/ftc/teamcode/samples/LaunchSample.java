@@ -51,8 +51,7 @@ public class LaunchSample extends LinearOpMode {
         launch = hardwareMap.get(DcMotor.class, "launch");
         flicker = hardwareMap.get(CRServo.class, "flicker");
 
-        launch.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        launch.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
+        launch.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         launch.setDirection(DcMotor.Direction.REVERSE);
 
 
@@ -62,27 +61,21 @@ public class LaunchSample extends LinearOpMode {
         waitForStart();
         runtime.reset();
 
-        // Scan servo till stop pressed.
         while(opModeIsActive()){
             
-            // Launch motor control with left stick X
-            double launchPower = -gamepad1.left_stick_x;
+            // Launch motor control with left stick Y
+            double launchPower = -gamepad1.left_stick_y;
             launch.setPower(launchPower);
             
-            // Flicker control with left bumper
-            double flickerP = gamepad1.left_trigger;
-            flickerP *= 10;
-            if (flickerP > 0) {
-                flicker.setPower(flickerP);
-            } else {
-                flicker.setPower(0);
-            }
+            // Flicker control with left trigger
+            double flickerPower = gamepad1.left_trigger;
+            flicker.setPower(flickerPower);
 
-            // Show the elapsed game time and wheel power.
+            // Show telemetry
             telemetry.addData("Status", "Run Time: " + runtime.toString());
             telemetry.addData("Launch Power", "%.2f", launchPower);
-            telemetry.addData("Flicker Power", "%.2f", flicker.getPower());
-            telemetry.addData(">", "Left Stick X: Launch, Left Bumper: Flicker" );
+            telemetry.addData("Flicker Power", "%.2f", flickerPower);
+            telemetry.addData(">", "Left Stick Y: Launch, Left Trigger: Flicker");
             telemetry.update();
         }
     }
