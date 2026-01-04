@@ -37,179 +37,111 @@ public class LaunchMechdistance extends LinearOpMode {
     private Double launchSpeed;
     private double range;
     double Power;
-    private double bluebaseID20;
-    private double redbaseID20;
+    private int bluebaseID20 = 20;
+    private int redbaseID24 = 24;
     private AprilTagProcessor aprilTag;        // Used for managing the AprilTag detection process.
+
     //The variable to store our instance of the vision portal.
+    @Override
     public void runOpMode() {
         initAprilTag();
         // Wait for the DS start button to be touched.
         telemetry.addData("DS preview on/off", "3 dots, Camera Stream");
         telemetry.addData(">", "Touch START to start OpMode");
         telemetry.update();
-       // waitForStart();    In OpMode, but using linear OpMode.
+        // waitForStart();    In OpMode, but using linear OpMode.
 
-        if (linearOpMode.opModeIsActive()) {
-            while (linearOpMode.opModeIsActive()) {
-
-                // Push telemetry to the Driver Station.
-                telemetry.update();
-
-                // Save CPU resources; can resume streaming when needed.
-                if (gamepad1.dpad_down) {
-                    visionPortal.stopStreaming();
-                } else if (gamepad1.dpad_up) {
-                    visionPortal.resumeStreaming();
-                }
-                // Share the CPU.
-                    sleep(20);
-            }
+        if (this.opModeIsActive()) {
+            telemetry.update();
+            visionPortal.resumeStreaming();
+            sleep(20);
+        } else {
+            visionPortal.stopStreaming();
         }
         // Save more CPU resources when camera is no longer needed.
         visionPortal.close();
 
+        // get the launch velocity
+        double launchVelocity = getLaunchVelocity();
+        // activate the launcher
+        launch.setPower(launchVelocity);
+        // activate the spindexer
+
+        //activate the flicker
+
     }   // end method runOpMode()
+
     /**
      * Initialize the AprilTag processor.
      */
-    private void initAprilTag() {
-
+    private <telemetryAprilTag> void initAprilTag() {
         // Create the AprilTag processor.
         aprilTag = new AprilTagProcessor.Builder()
 
-                // The following default settings are available to un-comment and edit as needed.
-                //.setDrawAxes(false)
-                //.setDrawCubeProjection(false)
-                //.setDrawTagOutline(true)
-                //.setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
-                //.setTagLibrary(AprilTagGameDatabase.getCenterStageTagLibrary())
-                //.setOutputUnits(DistanceUnit.INCH, AngleUnit.DEGREES)
-
-                // == CAMERA CALIBRATION ==
-                // If you do not manually specify calibration parameters, the SDK will attempt
-                // to load a predefined calibration for your camera.
-                //.setLensIntrinsics(578.272, 578.272, 402.145, 221.506)
-                // ... these parameters are fx, fy, cx, cy.
-
                 .build();
 
-        // Adjust Image Decimation to trade-off detection-range for detection-rate.
-        // eg: Some typical detection data using a Logitech C920 WebCam
-        // Decimation = 1 ..  Detect 2" Tag from 10 feet away at 10 Frames per second
-        // Decimation = 2 ..  Detect 2" Tag from 6  feet away at 22 Frames per second
-        // Decimation = 3 ..  Detect 2" Tag from 4  feet away at 30 Frames Per Second (default)
-        // Decimation = 3 ..  Detect 5" Tag from 10 feet away at 30 Frames Per Second (default)
-        // Note: Decimation can be changed on-the-fly to adapt during a match.
-        //aprilTag.setDecimation(3);
-
-        // Create the vision portal by using a builder.
         VisionPortal.Builder builder = new VisionPortal.Builder();
-
         // Set the camera (webcam vs. built-in RC phone camera).
         if (USE_WEBCAM) {
-            builder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
+            builder.setCamera(hardwareMap.get(WebcamName.class, "webcam"));
         } else {
             builder.setCamera(BuiltinCameraDirection.BACK);
         }
-
-        // Choose a camera resolution. Not all cameras support all resolutions.
-        //builder.setCameraResolution(new Size(640, 480));
-
-        // Enable the RC preview (LiveView).  Set "false" to omit camera monitoring.
-        //builder.enableLiveView(true);
-
-        // Set the stream format; MJPEG uses less bandwidth than default YUY2.
-        //builder.setStreamFormat(VisionPortal.StreamFormat.YUY2);
-
-        // Choose whether or not LiveView stops if no processors are enabled.
-        // If set "true", monitor shows solid orange screen if no processors enabled.
-        // If set "false", monitor shows camera view without annotations.
-        //builder.setAutoStopLiveView(false);
-
-        // Set and enable the processor.
         builder.addProcessor(aprilTag);
 
         // Build the Vision Portal, using the above settings.
         visionPortal = builder.build();
 
         //The variable to store our instance of the AprilTag processor.
-        public void telemetryAprilTag() {
-            List<AprilTagDetection> currentDetections = aprilTag.getDetections();
-            telemetry.addData("# AprilTags Detected", currentDetections.size());
+  /*     if (linearOpMode.opModeIsActive()) {
+            while(linearOpMode.opModeIsActive()) {
+                    List<AprilTagDetection> currentDetections = aprilTag.getDetections();
+                    telemetry.addData("# AprilTags Detected", currentDetections.size());
+                    for (AprilTagDetection detection : currentDetections) {
+                        if (detection.metadata != null) {
+                            telemetry.addLine(String.format("\n==== (ID %d) %s", detection.id, detection.metadata.name));
+                            telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));    // Only need the y (distance)
+                            telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
+                            telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
+                        } else {
+                            telemetry.addLine(String.format("\n==== (ID %d) Unknown", detection.id));
+                            telemetry.addLine(String.format("Center %6.0f %6.0f   (pixels)", detection.center.x, detection.center.y));
+                        }
+                    }   // end for() loop
 
-            for (AprilTagDetection detection : currentDetections) {
-                if (detection.metadata != null) {
-                    telemetry.addLine(String.format("\n==== (ID %d) %s", detection.id, detection.metadata.name));
-                    telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));    // Only need the y (distance)
-                    telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                    telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-                } else {
-                    telemetry.addLine(String.format("\n==== (ID %d) Unknown", detection.id));
-                    telemetry.addLine(String.format("Center %6.0f %6.0f   (pixels)", detection.center.x, detection.center.y));
-                }
-            }   // end for() loop
-
-            // Add "key" information to telemetry
-            telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
-            telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
-            telemetry.addLine("RBE = Range, Bearing & Elevation");
-        }
-            if (linearOpMode.opModeIsActive()) {
-                while (linearOpMode.opModeIsActive()) {
-                    telemetryAprilTag();
+                    // Add "key" information to telemetry
+                    telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
+                    telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
+                    telemetry.addLine("RBE = Range, Bearing & Elevation");
                     telemetry.update();// Push telemetry to the Driver Station.
                 }
-                int speedFactor;
-                if (range < 10) {
-                    speedFactor = 10;
-                } else if (10.0 < range < 20.0) {
-                    speedFactor = 15;
-                } else if (20.0 < range < 30.0) {
-                    speedFactor = 20;
-                    launch.setPower(speedFactor);    // Setting the power
-                    telemetry.addData("Status", "Run Time: " + runtime.toString());    // How long the motor is running for
-                    telemetry.addData("Motors", "launch (%.2f)", Power);   //Updates the motor
-                    telemetry.update();
-                    // Spin_dexer()    for later when spin-dexer class
-                    //  flick()       for later, when flicker class is finished.
-                    launch.setPower(0);     // Stops the motor
                 }
+                telemetry.addData("Status", "Run Time: " + runtime.toString());    // How long the motor is running for
+                telemetry.addData("Motors", "launch (%.2f)", Power);   //Updates the motor
+                telemetry.update();
+                // Spin_dexer() for later when spin-dexer class
+                // flick()       for later, when flicker class is finished.
+                launch.setPower(0);     // Stops the motor
+            }
+        }   */
+    }
 
-
-//                    if (endrange - startrange < 10) {
-//                    launch.setPower(formulaSpeed);    // Setting the power
-//                    telemetry.addData("Status", "Run Time: " + runtime.toString());    // How long the motor is running for
-//                    telemetry.addData("Motors", "launch (%.2f)", Power);   //Updates the motor
-//                    telemetry.update();
-//                    // Spin_dexer()    for later when spin-dexer class
-//                    //  flick()       for later, when flicker class is finished.
-//                    launch.setPower(0);     // Stops the motor
-//                }
-//                if (endrange - startrange < 20) {
-//                    launch.setPower(formulaSpeed);     // Setting the power
-//                    telemetry.addData("Status", "Run Time: " + runtime.toString());   // How long the motor is running for
-//                    telemetry.addData("Motors", "albert (%.2f)", Power);    //Updates the motor
-//                    telemetry.update();
-//                    //Spin_dexer
-//                    // flick()    for later, when flicker class is finished.
-//                    launch.setPower(0);  // Stops the motor
-//                }
-//                if (endrange - startrange < 30) {
-//                    launch.setPower(formulaSpeed);      // Setting the power
-//                    telemetry.addData("Status", "Run Time: " + runtime.toString());
-//                    telemetry.addData("Motors", "albert (%.2f)", Power);
-//                    telemetry.update();
-//                    //    flick()    for later, when flicker class is finished.
-//                    launch.setPower(0);  // Stops the motor
-//                }
-//                if (endrange - startrange > 100) {
-//                    launch.setPower(formulaSpeed);      // Setting the power
-//                    telemetry.addData("Status", "Run Time: " + runtime.toString());
-//                    telemetry.addData("Motors", "albert (%.2f)", Power);
-//                    telemetry.update();
-//                    //  flick()     for later, when flicker class is finished.
-//                    launch.setPower(0);  // Stops the motor
-//                }
+    private double getLaunchVelocity() {
+        double verticalD = 0.0;
+        List<AprilTagDetection> currentDetections = aprilTag.getDetections();
+        for (AprilTagDetection at : currentDetections) {
+            if (at.metadata.id == bluebaseID20 || at.metadata.id == redbaseID24) {
+                verticalD = at.ftcPose.y;
             }
         }
+        double speedFactor = -1.0;
+        if (verticalD < 10.0) {
+            speedFactor = 0.125;    // Setting the power, based on the distance (in if statements above)j
+        } else if (verticalD < 20.0 && verticalD > 10.0) {
+            speedFactor = 0.25;   // Setting the power, based on the distance (in if statements above)
+        } else if (verticalD > 20.0 && verticalD < 30.0) {
+            speedFactor = 0.5;   // Setting the power, based on the distance (in if statements above)
+        }
+        return speedFactor;
+    }
 }
