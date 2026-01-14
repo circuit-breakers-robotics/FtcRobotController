@@ -11,8 +11,8 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
 
     CRServo flicker;
     CRServo spindexer;
-    DcMotor intake;
-    DcMotor launch;
+    DcMotorSimple intake; // for spark mini servo controller
+    DcMotorSimple launch;
 
     @Override
     public void runOpMode() {
@@ -20,12 +20,9 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
         spindexer = hardwareMap.get(CRServo.class, "spindexer");
         spindexer.setDirection(DcMotorSimple.Direction.FORWARD);
 
-        intake = hardwareMap.get(DcMotor.class, "intake");
-        intake.setDirection(DcMotor.Direction.REVERSE);
+        intake = hardwareMap.get(DcMotorSimple.class, "intake");
 
         launch = hardwareMap.get(DcMotor.class, "launch");
-        launch.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-        launch.setDirection(DcMotor.Direction.REVERSE);
 
 
         // Wait for the start button
