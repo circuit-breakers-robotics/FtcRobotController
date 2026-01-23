@@ -1,12 +1,16 @@
 package org.firstinspires.ftc.teamcode.samples;
 
+import static java.lang.Math.floor;
+import static java.lang.Math.round;
+
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -16,19 +20,20 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 
 @TeleOp(name = "IntrgratedRobotTeleOpSample", group = "TeleOp")
-public class IntrgratedRobotTeleOpSample extends LinearOpMode {
+public class IntegratedRobotTeleOpSample extends LinearOpMode {
 
-    Servo flicker;
-    Servo spindexer;
-    DcMotorSimple intake; // for spark mini servo controller
-    DcMotorSimple launch;
+    public static final double defaultLaunchPower = 0.678;
+    private Servo flicker;
+    private Servo spindexer;
+    private DcMotorSimple intake; // for spark mini servo controller
+    private DcMotorSimple launch;
 
     private DcMotor leftDriveFront;
     private DcMotor leftDriveRear;
     private DcMotor rightDriveFront;
     private DcMotor rightDriveRear;
+    private IMU imu;
 
-    private long spindexerStartTime = 0;
     private boolean spindexerRunning = false;
     private static final int ROTATION_TIME_MS = 1100; // Time for 120° rotation
 
@@ -48,31 +53,28 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
     //[30-45, 0.62]
     //[65-67, 0.678]
     private static final double[][] LAUNCH_VELOCITY_MAP = {
-            {30, 45, 0.62},
-            {45, 65, 0.652},
-            {65, 67, 0.678},
-            {67, 75, 0.688},
-            {75, 78, 0.70},
-            {78, 85, 0.768},
-            {124, 130, 0.88}
+        {30, 45, 0.62},
+        {45, 65, 0.652},
+        {65, 67, 0.678},
+        {67, 75, 0.688},
+        {75, 78, 0.70},
+        {78, 85, 0.768},
+        {124, 130, 0.88}
     };
 
-    private static final double NEAR_ZONE_MIN = 25.0; // inches (48 - 10)
-    private static final double NEAR_ZONE_MAX = 75.0; // inches (48 + 15)
-    private static final double NEAR_ZONE_VELOCITY = 0.452;
-    private static final double FAR_ZONE_MIN = 55.0; // inches (65 - 10)
-    private static final double FAR_ZONE_MAX = 80.0; // inches (65 + 15)
-    private static final double FAR_ZONE_VELOCITY = 1.0;
+    private static final double FAR_ZONE_MAX = 126.0; // inches (65 + 15)
 
     private AprilTagProcessor aprilTag;
     private VisionPortal visionPortal;
 
     private int counter = 0;
-    private double base = 0.51;
-    private double flickerUp = 0.52;
+    // for rotation in one direction saves cycle time
+    private double spindexer_2 = 0.965;
+    private double spindexer_1 = 0.51;
+    private double spindexer_0 = 0.035;
     private double flickerBase = 0.0;
-    private double left = 0.965;
-    private double right = 0.035;
+    private double flickerUp = 0.52;
+    private ElapsedTime runtime = new ElapsedTime();
 
     @Override
     public void runOpMode() {
@@ -81,6 +83,7 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
         telemetry.addData(">", "Press Start to operate TeleOp" );
         telemetry.update();
         waitForStart();
+        runtime.reset();
 
         while(opModeIsActive()){
             runDrive();
@@ -120,11 +123,11 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
     private void runSpindexer() {
         if((gamepad2.left_trigger > 0.5 || autoLaunchActive) && !spindexerRunning) {
             if (counter == 0) {
-                spindexer.setPosition(left);
+                spindexer.setPosition(spindexer_0);
             } else if(counter == 1) {
-                spindexer.setPosition(right);
+                spindexer.setPosition(spindexer_1);
             } else if(counter == 2) {
-                spindexer.setPosition(base);
+                spindexer.setPosition(spindexer_2);
                 counter = -1;
             }
             spindexerRunning = true;
@@ -150,11 +153,7 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
 
     private void runIntake() {
         double intakePower = gamepad2.left_stick_y;
-        if (intakePower > 0.) {
-            intake.setPower(intakePower);
-        } else {
-            intake.setPower(0.0);
-        }
+        intake.setPower(intakePower);
         telemetry.addData("Intake Power: ", intakePower);
     }
 
@@ -165,26 +164,21 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
     }
 
     private void runDrive() {
-        /*double leftPower = -gamepad1.left_stick_y;
-        double rightPower = -gamepad1.right_stick_y;
-
-        leftDriveFront.setPower(leftPower);
-        leftDriveRear.setPower(leftPower);
-        rightDriveFront.setPower(rightPower);
-        rightDriveRear.setPower(rightPower);*/
-        drive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_x);
-
-//        telemetry.addData("Left Drive: ", leftPower);
-//        telemetry.addData("Right Drive: ", rightPower);
+//        drive(-gamepad1.left_stick_y, gamepad1.left_stick_x, gamepad1.right_stick_y);
+        // POV Mode uses left joystick to go forward & strafe, and right joystick to rotate.
+        double axial   = -gamepad1.left_stick_y;  // Note: pushing stick forward gives negative value
+        double lateral =  gamepad1.left_stick_x;
+        double yaw     =  gamepad1.right_stick_x;
+        driveLinear(axial, lateral, yaw);
     }
 
     private void initRobotHardware() {
-//        flicker = hardwareMap.get(CRServo.class, "flicker");
         flicker = hardwareMap.get(Servo.class, "flicker");
         flicker.setPosition(flickerBase);
 
         spindexer = hardwareMap.get(Servo.class, "spindexer");
-        spindexer.setPosition(base);
+        spindexer.setPosition(spindexer_0);
+
 
         intake = hardwareMap.get(DcMotorSimple.class, "intake");
         intake.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -197,16 +191,18 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
         rightDriveFront = hardwareMap.get(DcMotor.class, "right_drive_front");
         rightDriveRear = hardwareMap.get(DcMotor.class, "right_drive_rear");
 
-//        imu = hardwareMap.get(IMU.class, "imu"); // Integral Measurement Unit
-//        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
-//                RevHubOrientationOnRobot.LogoFacingDirection.UP,
-//                RevHubOrientationOnRobot.UsbFacingDirection.FORWARD));
-//        imu.initialize(parameters);
+        imu = hardwareMap.get(IMU.class, "imu"); // Integral Measurement Unit
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
+                RevHubOrientationOnRobot.UsbFacingDirection.UP));
+        imu.initialize(parameters);
 
         // We set the left motors in reverse which is needed for drive trains where the left
         // motors are opposite to the right ones.
         leftDriveRear.setDirection(DcMotor.Direction.REVERSE);
         leftDriveFront.setDirection(DcMotor.Direction.REVERSE);
+        rightDriveFront.setDirection(DcMotor.Direction.FORWARD);
+        rightDriveRear.setDirection(DcMotor.Direction.FORWARD);
 
         // This uses RUN_USING_ENCODER to be more accurate.   If you don't have the encoder
         // wires, you should remove these
@@ -223,8 +219,8 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
 
     private void runAutoLaunch() {
         long elapsed = System.currentTimeMillis() - stepStartTime;
-        double distance = getAprilTagDistance();
-        double launchPower = 0.888;
+        double distance = floor(getAprilTagDistance());
+        double launchPower = defaultLaunchPower;
 
         for(double[] range : LAUNCH_VELOCITY_MAP) {
             if(distance >= range[0] && distance <= range[1]) {
@@ -257,11 +253,11 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
             } else {
                 flicker.setPosition(flickerBase);
                 if (counter == 0) {
-                    spindexer.setPosition(left);
+                    spindexer.setPosition(spindexer_0);
                 } else if(counter == 1) {
-                    spindexer.setPosition(right);
+                    spindexer.setPosition(spindexer_1);
                 } else if(counter == 2) {
-                    spindexer.setPosition(base);
+                    spindexer.setPosition(spindexer_2);
                     counter = -1;
                 }
                 counter++;
@@ -280,7 +276,7 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
     }
 
     // Thanks to FTC16072 for sharing this code!!
-    public void drive(double forward, double right, double rotate) {
+    private void drive(double forward, double right, double rotate) {
         // This calculates the power needed for each wheel based on the amount of forward,
         // strafe right, and rotate
         double frontLeftPower = forward + right + rotate;
@@ -306,5 +302,63 @@ public class IntrgratedRobotTeleOpSample extends LinearOpMode {
         rightDriveFront.setPower(maxSpeed * (frontRightPower / maxPower));
         leftDriveRear.setPower(maxSpeed * (backLeftPower / maxPower));
         rightDriveRear.setPower(maxSpeed * (backRightPower / maxPower));
+
+        telemetry.addData("left front Power: ", leftDriveFront.getPower());
+        telemetry.addData("left back Power: ", leftDriveRear.getPower());
+        telemetry.addData("right front Power: ", rightDriveFront.getPower());
+        telemetry.addData("right back Power: ", rightDriveRear.getPower());
+    }
+
+    private void driveLinear(double axial, double lateral, double yaw) {
+        double max;
+
+        // Combine the joystick requests for each axis-motion to determine each wheel's power.
+        // Set up a variable for each drive wheel to save the power level for telemetry.
+        double frontLeftPower  = axial + lateral + yaw;
+        double frontRightPower = axial - lateral - yaw;
+        double backLeftPower   = axial - lateral + yaw;
+        double backRightPower  = axial + lateral - yaw;
+
+        // Normalize the values so no wheel power exceeds 100%
+        // This ensures that the robot maintains the desired motion.
+        max = Math.max(Math.abs(frontLeftPower), Math.abs(frontRightPower));
+        max = Math.max(max, Math.abs(backLeftPower));
+        max = Math.max(max, Math.abs(backRightPower));
+
+        if (max > 1.0) {
+            frontLeftPower  /= max;
+            frontRightPower /= max;
+            backLeftPower   /= max;
+            backRightPower  /= max;
+        }
+
+        // This is test code:
+        //
+        // Uncomment the following code to test your motor directions.
+        // Each button should make the corresponding motor run FORWARD.
+        //   1) First get all the motors to take to correct positions on the robot
+        //      by adjusting your Robot Configuration if necessary.
+        //   2) Then make sure they run in the correct direction by modifying the
+        //      the setDirection() calls above.
+        // Once the correct motors move in the correct direction re-comment this code.
+
+            /*
+            frontLeftPower  = gamepad1.x ? 1.0 : 0.0;  // X gamepad
+            backLeftPower   = gamepad1.a ? 1.0 : 0.0;  // A gamepad
+            frontRightPower = gamepad1.y ? 1.0 : 0.0;  // Y gamepad
+            backRightPower  = gamepad1.b ? 1.0 : 0.0;  // B gamepad
+            */
+
+        // Send calculated power to wheels
+        leftDriveFront.setPower(frontLeftPower);
+        rightDriveFront.setPower(frontRightPower);
+        leftDriveRear.setPower(backLeftPower);
+        rightDriveRear.setPower(backRightPower);
+
+        // Show the elapsed game time and wheel power.
+        telemetry.addData("Status", "Run Time: " + runtime.toString());
+        telemetry.addData("Front left/Right", "%4.2f, %4.2f", frontLeftPower, frontRightPower);
+        telemetry.addData("Back  left/Right", "%4.2f, %4.2f", backLeftPower, backRightPower);
+        telemetry.update();
     }
 }
